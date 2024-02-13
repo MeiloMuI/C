@@ -1,0 +1,5 @@
+START
+  LOOP A OVER { 1 2 3 4 }
+    FORWARD 1
+  END
+END

@@ -1,0 +1,807 @@
+Beginning from the smallest units to the larger functions in interpreter part, I test all the functions using the value in Program*. Because we don't need so many values to achieve parser's function, I test it using several .ttl examples so that I am sure the parser can work successfully. The fail_parse_ok_interp and ok_parse_fail_interp are tested.
+
+My parser just follow neill's parser code. They are similar in structure.
+And my interpreter using several variables in Program* to record information in recursion. For example, in Col(), I will use p->colour to record the information. And when it meets "FORWARD", it will call Fwd() and write result to the res array in Program*. Loop() uses two variables to calculate loop_times and build a for loop to call Inslst(). And Set() is similar as Loop(). 
+The postscript part has been done and tested. And I added it to the interpreter above.
+
+I found a bug in .txt result. Because if we want to output the result in ANSI or .txt file. We need to ensure the calculate method and word pixel are the same to get the same result.
+
+I learned building functions recursively and using pointers and ADTs to record the changing value in recursive calls. And test() is very important because I find some bugs in my program which is hard to find when the program is too big. In addition, I think we need a lexer to avoid a situation that the program can not know the meaning of SET A (1).(It depends on the accuracy of the format.)
+
+I'm sure every line of my code has been tested.
+
+The details are as follows:
+
+Part 1. The testing of parser.
+
+The value of cw will continue to increase as the parser runs. So I use the value of cw in struct Program to test if the parser can run correctly in several different situations. Testing all the functions to ensure all the C code has been tested.
+
+1.
+  //use 
+  //    START
+  //    END
+  //to test if Prog() will call Inslst() and return successfully.
+  strcpy(testProgram->wds[0], "START");
+  strcpy(testProgram->wds[1], "END");
+  assert(testProgram->cw == 1);
+2a.
+  //use 
+  //    START
+  //      FORWARD 5
+  //    END
+  //To test if Inslst() will call Ins() successfully.
+  //And to test if Ins() will call Fwd(), which will call the VarNum() and call the Num() in the 
+  //VarNum(), and return successfully.
+  testProgram->cw = 0;
+  strcpy(testProgram->wds[0], "START");
+  strcpy(testProgram->wds[1], "FORWARD");
+  strcpy(testProgram->wds[2], "5");
+  strcpy(testProgram->wds[3], "END");
+  assert(testProgram->cw == 3);
+2b.
+  //use 
+  //    START
+  //      FORWARD $A
+  //    END
+  //To test if Prog() will call Ins() successfully.
+  //And to test if Ins() will call Fwd(), which will call the VarNum() 
+  //and then call the Var() in the VarNum(), and return successfully.
+  testProgram->cw = 0;
+  strcpy(testProgram->wds[0], "START");
+  strcpy(testProgram->wds[1], "FORWARD");
+  strcpy(testProgram->wds[2], "$A");
+  strcpy(testProgram->wds[3], "END");
+  Prog(testProgram);
+  assert(testProgram->cw == 3);
+3.
+  //use 
+  //    START
+  //      RIGHT 45
+  //    END
+  //To test if Ins() will call Rgt() and return successfully.
+  testProgram->cw = 0;
+  strcpy(testProgram->wds[0], "START");
+  strcpy(testProgram->wds[1], "RIGHT");
+  strcpy(testProgram->wds[2], "90");
+  strcpy(testProgram->wds[3], "END");
+  assert(testProgram->cw == 3);
+4a.
+  //use 
+  //    START
+  //      COLOUR BLUE
+  //    END
+  //To test if Ins() will call Col(), which will call Word_Col() and then return successfully.
+  testProgram->cw = 0;
+  strcpy(testProgram->wds[0], "START");
+  strcpy(testProgram->wds[1], "COLOUR");
+  strcpy(testProgram->wds[2], "BLUE");
+  strcpy(testProgram->wds[3], "END");
+  assert(testProgram->cw == 3);
+4b.
+  //use 
+  //    START
+  //      COLOUR $C
+  //    END
+  //To test if Ins will call Col(), which will call Var() and then return successfully.
+  testProgram->cw = 0;
+  strcpy(testProgram->wds[0], "START");
+  strcpy(testProgram->wds[1], "COLOUR");
+  strcpy(testProgram->wds[2], "$C");
+  strcpy(testProgram->wds[3], "END");
+  Prog(testProgram);
+  assert(testProgram->cw == 3);
+5.
+  //use 
+  //    START
+  //      SET A ( 0 )
+  //      SET B ( $A 1 + ) 
+  //    END
+  //To test if Ins() will call Set(), which will call Ltr() and Pfix(), and then will call Op() and 
+  //VarNum() successfully. The Pfix() will call itself recursively.
+  //And to test if Inslst() will be called many times recursively and successfully.
+  testProgram->cw = 0;
+  strcpy(testProgram->wds[0], "START");
+  strcpy(testProgram->wds[1], "SET");
+  strcpy(testProgram->wds[2], "A");
+  strcpy(testProgram->wds[3], "(");
+  strcpy(testProgram->wds[4], "3");
+  strcpy(testProgram->wds[5], ")");
+  strcpy(testProgram->wds[6], "SET");
+  strcpy(testProgram->wds[7], "B");
+  strcpy(testProgram->wds[8], "(");
+  strcpy(testProgram->wds[9], "$A");
+  strcpy(testProgram->wds[10], "1");
+  strcpy(testProgram->wds[11], "+");
+  strcpy(testProgram->wds[12], ")");
+  strcpy(testProgram->wds[13], "END");
+  assert(testProgram->cw == 13);
+6.
+  //To test if Item() will call Word() and VarNum() and return successfully.
+  testProgram->cw = 0;
+  strcpy(testProgram->wds[0], "$A");
+  Item(testProgram);
+  strcpy(testProgram->wds[0], "3");
+  Item(testProgram);
+  strcpy(testProgram->wds[0], "\"TEST\"");
+  Item(testProgram);
+7.
+  //To test if VarNum() will call Var() and Num() and return successfully.
+  strcpy(testProgram->wds[0], "$A");
+  VarNum(testProgram);
+  strcpy(testProgram->wds[0], "124");
+  VarNum(testProgram);
+8.
+  //To test if Word() will be called and return successfully.
+  strcpy(testProgram->wds[0], "\"TESTWORD\"");
+  Word(testProgram);
+9.
+  //To test if Word_Col() will be called and return successfully.
+  strcpy(testProgram->wds[0], "\"YELLOW\"");
+  Word_Col(testProgram);
+10.
+  //Test isNum()
+  assert(isNum("7"));
+  assert(isNum("-7"));
+  assert(isNum("7.76463"));
+  assert(isNum("-7.76463"));
+  assert(!isNum("asdfsd4"));
+  assert(!isNum(".7"));
+  assert(!isNum("-"));
+  assert(!isNum(""));
+  assert(!isNum("-.4687"));
+  assert(!isNum("-."));
+11.
+  //Test isOp()
+  strcpy(testProgram->wds[0], "+");
+  assert(isOp(testProgram));
+  strcpy(testProgram->wds[0], "+--");
+  assert(!isOp(testProgram));
+  strcpy(testProgram->wds[0], "+1321");
+  assert(!isOp(testProgram));
+12.
+  //Test Var()
+  strcpy(testProgram->wds[0], "$L");
+  Var(testProgram);
+13.
+  //Test Ltr()
+  strcpy(testProgram->wds[0], "L");
+  Ltr(testProgram);
+14.
+  //Test Op()
+  strcpy(testProgram->wds[0], "*");
+  Op(testProgram);
+15.
+  //use 
+  //    START
+  //      LOOP A OVER { 1 2 3 4 }
+  //        FORWARD 3
+  //        RIGHT 45
+  //      END  
+  //    END
+  //To test if Ins() will call Loop() successfully.
+  //To test if Loop() will call Ltr(), Lst() and Inslst() successfully.
+  //To test if Lst() will call Items() successfully.
+  //To test if Items() will call Item() and call itself successfully.
+  testProgram->cw = 0;
+  strcpy(testProgram->wds[0], "START");
+  strcpy(testProgram->wds[1], "LOOP");
+  strcpy(testProgram->wds[2], "A");
+  strcpy(testProgram->wds[3], "OVER");
+  strcpy(testProgram->wds[4], "{");
+  strcpy(testProgram->wds[5], "1");
+  strcpy(testProgram->wds[6], "2");
+  strcpy(testProgram->wds[7], "3");
+  strcpy(testProgram->wds[8], "4");
+  strcpy(testProgram->wds[9], "}");
+  strcpy(testProgram->wds[10], "FORWARD");
+  strcpy(testProgram->wds[11], "3");
+  strcpy(testProgram->wds[12], "RIGHT");
+  strcpy(testProgram->wds[13], "45");
+  strcpy(testProgram->wds[14], "END");
+  strcpy(testProgram->wds[15], "END");
+  assert(testProgram->cw == 15);
+16.
+  //use 
+  //    START
+  //      LOOP C OVER { "BLUE" "RED" "BLACK" }
+  //        COLOUR $C
+  //        FORWARD 5
+  //      END  
+  //    END
+  //A test just like the former.
+  testProgram->cw = 0;
+  strcpy(testProgram->wds[0], "START");
+  strcpy(testProgram->wds[1], "LOOP");
+  strcpy(testProgram->wds[2], "A");
+  strcpy(testProgram->wds[3], "OVER");
+  strcpy(testProgram->wds[4], "{");
+  strcpy(testProgram->wds[5], "\"BLUE\"");
+  strcpy(testProgram->wds[6], "\"RED\"");
+  strcpy(testProgram->wds[7], "\"BLACK\"");
+  strcpy(testProgram->wds[8], "\"CYAN\"");
+  strcpy(testProgram->wds[9], "}");
+  strcpy(testProgram->wds[10], "COLOUR");
+  strcpy(testProgram->wds[11], "$C");
+  strcpy(testProgram->wds[12], "FORWARD");
+  strcpy(testProgram->wds[13], "5");
+  strcpy(testProgram->wds[14], "END");
+  strcpy(testProgram->wds[15], "END");
+  assert(testProgram->cw == 15);
+17.
+  //To test the parser can read commands from the .txt file successfully with fscanf()
+  //and run the Prog() successfully.
+  testProgram->cw = 0;
+  FILE* test_fp = fopen(FILE_ONE, "r");
+  if(test_fp == NULL){
+    fprintf(stderr, "Cannot open the file in test().\n");
+    exit(EXIT_FAILURE);
+  }
+  int count = 0;
+  while(fscanf(test_fp, "%s", testProgram->wds[count]) == 1){
+    count++;
+    if(count >= MAXNUMTOKENS){
+      fprintf(stderr, "Too many tokens to read in test().\n");
+      exit(EXIT_FAILURE);
+    }
+  }
+  fclose(test_fp);
+  Prog(testProgram);
+  assert(testProgram->cw == 19);
+
+------------------------------------------------------------------------------------
+
+Part 2. The testing of interpreter
+
+//interpreter test part.
+
+  Program* testProgram = initial_program(3);
+  //test Program* initial_program(void);
+  //using the argc in the Program to test the Program* is initialised successfully.
+  assert(testProgram != NULL);
+  assert(testProgram->argc == 3);
+  
+  //1. test the new functions in interpreter
+
+  //update_var(), test if this function can update the content of variables
+  //The update_var() will copy the string in the position(parameter 3) to the array in the Program* according to the parameter 2
+  strcpy(testProgram->wds[0], "TEST_UPDATE");
+  update_var(testProgram, 'A', 0);
+  assert(strcmp(testProgram->vars[0], "TEST_UPDATE") == 0);
+  strcpy(testProgram->wds[3], "TEST_UPDATE_2");
+  update_var(testProgram, 'D', 3);
+  assert(strcmp(testProgram->vars[3], "TEST_UPDATE_2") == 0);
+  
+  //isColour()
+  //The isColour() will output true if the string is the same as eight colours.
+  assert(isColour("\"BLACK\""));
+  assert(!isColour("135454"));
+  assert(isColour("\"CYAN\""));
+
+  //double adjust_angle_value(double angle), 0.0 <= return value < 360.0
+  //test if this function can control the return value in the range 0.0~360.0
+  assert(adjust_angle_value(7345.0) < 360.0);
+  assert(adjust_angle_value(360.0) < 360.0);
+  assert(adjust_angle_value(-230.0) > 0.0);
+  assert(adjust_angle_value(-729.0) > 0.0);
+
+  //double cos_degree(double degree)
+  //test this function using special degrees to ensure the return value is correct.
+  assert((int)cos_degree(0.0) == 1);
+  assert((int)cos_degree(90.0) == 0);
+  assert(cos_degree(59.0) > 0.5);
+  assert((int)cos_degree(-90.0) == 0);
+
+  //double sin_degree(double degree)
+  //test this function using special degrees to ensure the return value is correct.
+  assert((int)sin_degree(0.0) == 0);
+  assert((int)round(sin_degree(90.0)) == 1);
+  assert(sin_degree(36.0) > 0.5);
+  assert((int)round(sin_degree(-90.0)) == -1);
+
+  //void result_print(Program *p, char filename[]), void ANSI_print(Program *p)
+  //are tested by running the interpreter.
+  
+  //void file_to_prog()
+  //test this function by reading files from Testing folder, and test if the string in the Program* is correct.
+  file_to_prog(testProgram, "../Testing/onlyend.ttl");
+  assert(strcmp(testProgram->wds[0], "END") == 0);
+  //this function will continue to be tested below
+
+  //void Prog(Program *p)
+  //read the onlyend.ttl file which has only one command "END" to ensure the program will printf the error information
+  //Prog(testProgram);
+
+  //void void Inslst(Program *p)
+  //read the onlystart.ttl file which has only one command "START" to ensure the program will printf the error information
+  file_to_prog(testProgram, "../Testing/onlystart.ttl");
+  assert(strcmp(testProgram->wds[0], "START") == 0);
+  //Inslst(testProgram);
+
+  //test if the Prog() will call Inslst() and return correctly.
+  testProgram->cw = 0;
+  strcpy(testProgram->wds[0], "START");
+  strcpy(testProgram->wds[1], "END");
+  Prog(testProgram);
+  assert(testProgram->cw == 1);
+
+  //void Num(Program *p)
+  //using RIGHT 79 and FORWARD 16 to test if this funtion will change the value in the Program*
+  testProgram->cw = 1;
+  strcpy(testProgram->wds[0], "RIGHT");
+  strcpy(testProgram->wds[1], "79");
+  Num(testProgram);
+  assert((int)testProgram->angle == 79);
+  strcpy(testProgram->wds[0], "FORWARD");
+  strcpy(testProgram->wds[1], "16");
+  Num(testProgram);
+  assert((int)testProgram->forward == 16);
+
+  free(testProgram);
+  testProgram = initial_program(3);
+
+  //void Var(Program *p)
+  //1. The Var() will output the error information if p->wds[p->cw] is not a variable.
+  // strcpy(testProgram->wds[0], "A");
+  // Var(testProgram);
+  // strcpy(testProgram->wds[0], "$a");
+  // Var(testProgram);
+  //2. Using RIGHT $R, FORWARD $F, COLOUR $C to test if Var() will change the value in the Program*
+  testProgram->cw = 1;
+  strcpy(testProgram->vars['T'-'A'], "trash");
+  strcpy(testProgram->vars['R'-'A'], "102");
+  strcpy(testProgram->vars['F'-'A'], "77");
+  strcpy(testProgram->vars['C'-'A'], "\"BLACK\"");
+  strcpy(testProgram->wds[0], "RIGHT");
+  strcpy(testProgram->wds[1], "$R");
+  Var(testProgram);
+  assert((int)testProgram->angle == 102);
+  strcpy(testProgram->wds[0], "FORWARD");
+  strcpy(testProgram->wds[1], "$F");
+  Var(testProgram);
+  assert((int)testProgram->forward == 77);
+  strcpy(testProgram->wds[0], "COLOUR");
+  strcpy(testProgram->wds[1], "$C");
+  Var(testProgram);
+  assert(testProgram->colour == 'K');
+  //3. test if the Var will output error information when the content of variable is "trash".
+  // strcpy(testProgram->wds[0], "FORWARD");
+  // strcpy(testProgram->wds[1], "$T");
+  // Var(testProgram);
+  // strcpy(testProgram->wds[0], "RIGHT");
+  // strcpy(testProgram->wds[1], "$T");
+  // Var(testProgram);
+  // strcpy(testProgram->wds[0], "COLOUR");
+  // strcpy(testProgram->wds[1], "$T");
+  // Var(testProgram);
+
+  free(testProgram);
+  testProgram = initial_program(3);
+
+  //void Word_Col(Program *p)
+  //Test the Word_Col using "BLACK", "GREEN", "RED", "CYAN", "WHITE"and "TRASH".
+  //If the word is colour, it will change the value of p->colour
+  //If the word is not a colour, it will output errror.
+  testProgram->cw = 0;
+  strcpy(testProgram->wds[0], "\"BLACK\"");
+  Word_Col(testProgram);
+  assert(testProgram->colour == 'K');
+  strcpy(testProgram->wds[0], "\"GREEN\"");
+  Word_Col(testProgram);
+  assert(testProgram->colour == 'G');
+  strcpy(testProgram->wds[0], "\"RED\"");
+  Word_Col(testProgram);
+  assert(testProgram->colour == 'R');
+  strcpy(testProgram->wds[0], "\"CYAN\"");
+  Word_Col(testProgram);
+  assert(testProgram->colour == 'C');
+  strcpy(testProgram->wds[0], "\"WHITE\"");
+  Word_Col(testProgram);
+  assert(testProgram->colour == 'W');
+  // strcpy(testProgram->wds[0], "\"TRASH\"");
+  // Word_Col(testProgram);
+  
+  //void VarNum(Program *p)
+  //using $A and $K to test if VarNum() will call Var() and change the value of var_num in Program*
+  //using 13 and 79.2 to test if VarNum() will call Num() and change the value of var_num to -1 in Program*
+  testProgram->cw = 0;
+  strcpy(testProgram->wds[0], "$A");
+  VarNum(testProgram);
+  assert(testProgram->var_num == 0);
+  strcpy(testProgram->wds[0], "13");
+  VarNum(testProgram);
+  assert(testProgram->var_num == -1);
+  strcpy(testProgram->wds[0], "$K");
+  VarNum(testProgram);
+  assert(testProgram->var_num == 'K'-'A');
+  strcpy(testProgram->wds[0], "79.2");
+  VarNum(testProgram);
+  assert(testProgram->var_num == -1);
+  //using trash string to test if the VarNum() will output error message
+  // strcpy(testProgram->wds[0], "asdfs55");
+  // VarNum(testProgram);
+
+  //void Ltr(Program *p)
+  //test if this function will output error information if the string is not a uppercase letter
+  testProgram->cw = 0;
+  strcpy(testProgram->wds[0], "a");
+  // Ltr(testProgram);
+  
+  //void Word(Program *p)
+  //test if this function will output error information if the string is not a word
+  strcpy(testProgram->wds[0], "abcbc");
+  // Word(testProgram);
+
+  //void Item(Program *p)
+  //test if this function will call Word() and output an error information
+  strcpy(testProgram->wds[0], "\"a");
+  // Item(testProgram);
+  //test if this function will call VarNum()
+  strcpy(testProgram->wds[0], "$T");
+  Item(testProgram);
+  assert(testProgram->var_num == 'T' - 'A');
+  testProgram->var_num = -1;
+
+  //void Items(Program *p)
+  //test if the Items() will call Item() and call itself recursively through the value of var_num and cw
+  testProgram->cw = 0;
+  strcpy(testProgram->wds[0], "$A");
+  strcpy(testProgram->wds[1], "$A");
+  strcpy(testProgram->wds[2], "$A");
+  strcpy(testProgram->wds[3], "$A");
+  strcpy(testProgram->wds[4], "}");
+  Items(testProgram);
+  assert(testProgram->var_num == 0);
+  assert(testProgram->cw == 4);
+  
+  testProgram->cw = 0;
+  strcpy(testProgram->wds[0], "$A");
+  strcpy(testProgram->wds[1], "$Z");
+  strcpy(testProgram->wds[2], "124");
+  strcpy(testProgram->wds[3], "12");
+  strcpy(testProgram->wds[4], "}");
+  strcpy(testProgram->wds[5], "}");
+  Items(testProgram);
+  assert(testProgram->var_num == -1);
+  assert(testProgram->cw == 4);
+
+  //void Lst(Program *p)
+  //1.test if the Lst() will call Items() through the value of var_num and cw
+  testProgram->cw = 0;
+  strcpy(testProgram->wds[0], "{");
+  strcpy(testProgram->wds[1], "$Z");
+  strcpy(testProgram->wds[2], "124");
+  strcpy(testProgram->wds[3], "$S");
+  strcpy(testProgram->wds[4], "}");
+  strcpy(testProgram->wds[5], "}");
+  Lst(testProgram);
+  assert(testProgram->var_num == 'S'-'A');
+  assert(testProgram->cw == 4);
+
+  testProgram->cw = 0;
+  strcpy(testProgram->wds[0], "{");
+  strcpy(testProgram->wds[1], "3424");
+  strcpy(testProgram->wds[2], "145.1");
+  strcpy(testProgram->wds[3], "654548");
+  strcpy(testProgram->wds[4], "454");
+  strcpy(testProgram->wds[5], "}");
+  Lst(testProgram);
+  assert(testProgram->var_num == -1);
+  assert(testProgram->cw == 5);
+  //2.test if this function will output a error information when the first string is not "{"
+  // testProgram->cw = 0;
+  // strcpy(testProgram->wds[0], "$A");
+  // strcpy(testProgram->wds[1], "$Z");
+  // Lst(testProgram);
+
+  //void Pfix(Program *p) 
+  //Pfix() will change the content of variable according to the var_num and ensure 
+  //the format is SET <LTR> (<VarNum>) or SET <LTR> (<VarNum> <VarNum> <Op>).
+  //1. test if the Pfix() will change the content of variable correctly
+  //The Pfix() will call Op() and VarNum()
+  testProgram->cw = 0;
+  testProgram->set_var = 2;//C
+  strcpy(testProgram->wds[0], "34");
+  strcpy(testProgram->wds[1], "7");
+  strcpy(testProgram->wds[2], "+");
+  strcpy(testProgram->wds[3], ")");
+  Pfix(testProgram);
+  assert((int)(atof(testProgram->vars[2])) == 41);
+  assert(testProgram->set_count == 0);
+  //find a bug in Op(). Fixed.
+  testProgram->cw = 0;
+  testProgram->set_var = 1;//B
+  strcpy(testProgram->wds[0], "52");
+  strcpy(testProgram->wds[1], ")");
+  Pfix(testProgram);
+  assert((int)round(atof(testProgram->vars[1])) == 52);
+  //find a bug the Pfix() can copy "$C" as the content of $A. Fixed
+  testProgram->cw = 0;
+  testProgram->set_var = 0;
+  strcpy(testProgram->wds[0], "$C");
+  strcpy(testProgram->wds[1], ")");
+  Pfix(testProgram);
+  assert((int)round(atof(testProgram->vars[0])) == 41);
+
+  testProgram->cw = 0;
+  testProgram->set_var = 0;
+  strcpy(testProgram->wds[0], "$C");
+  strcpy(testProgram->wds[1], "7");
+  strcpy(testProgram->wds[2], "-");
+  strcpy(testProgram->wds[3], ")");
+  Pfix(testProgram);
+  assert((int)round(atof(testProgram->vars[0])) == 34);
+  
+  //2. test if the Pfix() will output error information when given a wrong format
+  //format SET <LTR> (<VarNum>) or SET <LTR> (<VarNum> <VarNum> <Op>)
+  testProgram->cw = 0;
+  testProgram->set_var = 2;//C
+  strcpy(testProgram->wds[0], "1");
+  strcpy(testProgram->wds[1], "+");
+  strcpy(testProgram->wds[2], "+");
+  strcpy(testProgram->wds[3], ")");
+  //Pfix(testProgram);
+
+  testProgram->cw = 0;
+  testProgram->set_var = 2;//C
+  strcpy(testProgram->wds[0], "1");
+  strcpy(testProgram->wds[1], "+");
+  strcpy(testProgram->wds[2], "1");
+  strcpy(testProgram->wds[3], ")");
+  //Pfix(testProgram);
+  
+  testProgram->cw = 0;
+  testProgram->set_var = 2;//C
+  strcpy(testProgram->wds[0], "1");
+  strcpy(testProgram->wds[1], "1");
+  strcpy(testProgram->wds[2], "+");
+  strcpy(testProgram->wds[3], "3");
+  strcpy(testProgram->wds[4], "+");
+  strcpy(testProgram->wds[5], ")");
+  //Pfix(testProgram);
+  
+  //if Pfix is empty or has only two parameters
+  testProgram->cw = 0;
+  testProgram->set_var = 2;//C
+  strcpy(testProgram->wds[0], ")");
+  //Pfix(testProgram);
+
+  testProgram->cw = 0;
+  testProgram->set_var = 2;//C
+  strcpy(testProgram->wds[0], "1");
+  strcpy(testProgram->wds[1], "1");
+  strcpy(testProgram->wds[2], ")");
+  //Pfix(testProgram);
+
+  //bool isOp(char str[MAXNUMTOKENS])
+  assert(!isOp("S"));
+  assert(isOp("+"));
+  assert(isOp("="));
+  assert(isOp("-"));
+  assert(isOp("/"));
+  assert(isOp("*"));
+  
+  free(testProgram);
+  testProgram = initial_program(3);
+
+  //void Op(Program *p)
+  //1. test if Op() can perform addition, subtraction, multiplication and division
+  // test the result which is saved in a variable
+  testProgram->cw = 2;
+  testProgram->set_var = 2;//C
+  strcpy(testProgram->wds[0], "3");
+  strcpy(testProgram->wds[1], "3");
+  strcpy(testProgram->wds[2], "+");
+  Op(testProgram);
+  assert((int)(atof(testProgram->vars[2])) == 6);
+  assert(testProgram->set_count == 0);
+  
+  testProgram->cw = 2;
+  testProgram->set_var = 1;//B
+  strcpy(testProgram->wds[0], "13");
+  strcpy(testProgram->wds[1], "11");
+  strcpy(testProgram->wds[2], "-");
+  Op(testProgram);
+  assert((int)(atof(testProgram->vars[1])) == 2);
+  assert(testProgram->set_count == 0);
+
+  testProgram->cw = 2;
+  testProgram->set_var = 0;//A
+  strcpy(testProgram->wds[0], "$C");
+  strcpy(testProgram->wds[1], "$B");
+  strcpy(testProgram->wds[2], "*");
+  Op(testProgram);
+  assert((int)(atof(testProgram->vars[0])) == 12);
+  assert(testProgram->set_count == 0);
+
+  testProgram->cw = 2;
+  testProgram->set_var = 0;//A
+  strcpy(testProgram->wds[0], "$C");
+  strcpy(testProgram->wds[1], "$B");
+  strcpy(testProgram->wds[2], "/");
+  Op(testProgram);
+  assert((int)(atof(testProgram->vars[0])) == 3);
+  assert(testProgram->set_count == 0);
+
+  //2. test if Op() will output error information when p->wds[p->cw] is "=" or "trash"
+  testProgram->cw = 2;
+  strcpy(testProgram->wds[0], "$C");
+  strcpy(testProgram->wds[1], "$B");
+  strcpy(testProgram->wds[2], "=");
+  //Op(testProgram);
+
+  testProgram->cw = 2;
+  strcpy(testProgram->wds[0], "$C");
+  strcpy(testProgram->wds[1], "$B");
+  strcpy(testProgram->wds[2], "trashdffsdfsf");
+  //Op(testProgram);
+  
+  free(testProgram);
+  testProgram = initial_program(3);
+
+  //void Loop(Program *p)
+  //1. test the keyword "OVER"
+  testProgram->cw = 0;
+  strcpy(testProgram->wds[0], "LOOP");
+  strcpy(testProgram->wds[1], "A");
+  strcpy(testProgram->wds[2], "fjsdlkfjsjflsdfj");
+  //Loop(testProgram);
+  
+  //2. test the Loop() will call Ltr() and Lst()
+  testProgram->cw = 0;
+  strcpy(testProgram->wds[0], "LOOP");
+  strcpy(testProgram->wds[1], "787");
+  //Loop(testProgram);
+
+  testProgram->cw = 0;
+  strcpy(testProgram->wds[0], "LOOP");
+  strcpy(testProgram->wds[1], "D");
+  strcpy(testProgram->wds[2], "OVER");
+  strcpy(testProgram->wds[3], "trash");
+  //Loop(testProgram);
+
+  //3.using looptest1.ttl to test if Loop() could call update_var() and Inslst() several times
+  //to get the correct result.(And testing if the number of cycles is correct)
+  file_to_prog(testProgram, "../Testing/looptest1.ttl");
+  Prog(testProgram);
+  assert(testProgram->res[12][25] == ' ');
+  for(int i = 0; i < 4; i++){
+    assert(testProgram->res[16-i][25] == 'W');
+  }
+  assert(strcmp(testProgram->vars[0], "4") == 0);
+
+  //4.using looptest2.ttl to test if loop() could skip when loop_times == 0(fail_parse_OK_Interp)
+  testProgram->cw = 0;
+  file_to_prog(testProgram, "../Testing/looptest2.ttl");
+  Prog(testProgram);
+  
+  free(testProgram);
+  testProgram = initial_program(3);
+
+  //void Set(Program *p)
+  //1. test if Set() could call ltr()
+  strcpy(testProgram->wds[0], "SET");
+  strcpy(testProgram->wds[1], "ABBCC");
+  //Set(testProgram);
+
+  //2. test if Set could control the format
+  testProgram->cw = 0;
+  strcpy(testProgram->wds[0], "SET");
+  strcpy(testProgram->wds[1], "A");
+  strcpy(testProgram->wds[2], "{");
+  //Set(testProgram);
+  
+  //3. test if Set could call Pfix() and set the value to variable
+  testProgram->cw = 0;
+  strcpy(testProgram->wds[0], "SET");
+  strcpy(testProgram->wds[1], "Z");
+  strcpy(testProgram->wds[2], "(");
+  strcpy(testProgram->wds[3], "7");
+  strcpy(testProgram->wds[4], "8");
+  strcpy(testProgram->wds[5], "*");
+  strcpy(testProgram->wds[6], ")");
+  Set(testProgram);
+  assert((int)(atof(testProgram->vars['Z'-'A'])) == 56);
+  
+  //void Col(Program *p)
+  //test if Col() could call Var()(this is tested by the final test) or Word_Col() to change the p->colour
+  testProgram->cw = 0;
+  strcpy(testProgram->wds[0], "COLOUR");
+  strcpy(testProgram->wds[1], "\"CYAN\"");
+  Col(testProgram);
+  assert(testProgram->colour == 'C');
+
+  //void Rgt(Program *p)
+  //test if Rgt() could call VarNum() and change the p->angle
+  testProgram->cw = 0;
+  strcpy(testProgram->wds[0], "RIGHT");
+  strcpy(testProgram->wds[1], "57");
+  Rgt(testProgram);
+  assert((int)testProgram->angle == 57);
+  testProgram->cw = 0;
+  strcpy(testProgram->wds[0], "RIGHT");
+  strcpy(testProgram->wds[1], "-57");
+  Rgt(testProgram);
+  //void Fwd(Program *p)
+  //test if Fwd() could call VarNum() and change the result array.
+  testProgram->cw = 0;
+  strcpy(testProgram->wds[0], "FORWARD");
+  strcpy(testProgram->wds[1], "5");
+  Fwd(testProgram);
+  for(int i = 0; i < 5; i++){
+    assert(testProgram->res[16 - i][25] == 'C');
+  }
+  //test if Fwd() could change the x and y in Program* correctly.
+  assert((int)round(testProgram->x) == 25);
+  assert((int)round(testProgram->y) == 11);
+
+  //void Ins(Program *p)
+  //test if Ins() will output error information when the keyword is wrong
+  testProgram->cw = 0;
+  strcpy(testProgram->wds[0], "WHILE");
+  strcpy(testProgram->wds[1], "5");
+  //Ins(testProgram);
+
+  //test all command using progtest.ttl to ensure all the functions are correct.
+  free(testProgram);
+  testProgram = initial_program(3);
+  file_to_prog(testProgram, "../Testing/progtest.ttl");
+  Prog(testProgram);
+  assert((int)atof(testProgram->vars[0]) == 3);
+  assert((int)atof(testProgram->vars[3]) == 1);
+  assert(testProgram->res[16][25] == 'B');
+  assert(testProgram->res[15][25] == 'K');
+  assert(testProgram->res[15][26] == 'R');
+  
+  free(testProgram);
+  testProgram = initial_program(3);
+  //void ps_file_initial(Program* p, char file_name[])
+  //test if this function could open a file in the way of writing
+  ps_file_initial(testProgram, "../Testing/writefiletest.ps");
+  assert(testProgram->fp != NULL);
+  
+  //test if the Fwd() could adjust the ps_x and ps_y correctly when writing .ps file
+  testProgram->cw = 0;
+  strcpy(testProgram->wds[0], "START");
+  strcpy(testProgram->wds[1], "FORWARD");
+  strcpy(testProgram->wds[2], "6");
+  strcpy(testProgram->wds[3], "RIGHT");
+  strcpy(testProgram->wds[4], "-90");
+  strcpy(testProgram->wds[5], "FORWARD");
+  strcpy(testProgram->wds[6], "6");
+  strcpy(testProgram->wds[7], "END");
+  Prog(testProgram);
+  assert((int)round(testProgram->ps_x) == STARTVALUEX - 6);
+  assert((int)round(testProgram->ps_y) == STARTVALUEY + 6);
+
+  //void get_rgb(Program *p, char colour[])
+  //test if this function could output the rgb information according to the colour in Program*
+  char str[10];
+  testProgram->colour = 'W';
+  get_rgb(testProgram, str);
+  assert(strcmp(str, "0.8 0.8 0.8") == 0);
+
+  testProgram->colour = 'K';
+  get_rgb(testProgram, str);
+  assert(strcmp(str, "0 0 0") == 0);
+
+  testProgram->colour = 'G';
+  get_rgb(testProgram, str);
+  assert(strcmp(str, "0 1 0") == 0);
+
+  testProgram->colour = 'Y';
+  get_rgb(testProgram, str);
+  assert(strcmp(str, "1 1 0") == 0);
+
+  testProgram->colour = 'B';
+  get_rgb(testProgram, str);
+  assert(strcmp(str, "0 0 1") == 0);
+
+  testProgram->colour = 'M';
+  get_rgb(testProgram, str);
+  assert(strcmp(str, "1 0 1") == 0);
+
+  testProgram->colour = 'C';
+  get_rgb(testProgram, str);
+  assert(strcmp(str, "0 1 1") == 0);
+  
+

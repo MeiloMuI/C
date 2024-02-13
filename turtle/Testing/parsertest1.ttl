@@ -1,0 +1,8 @@
+START
+  FORWARD 5
+  RIGHT 45
+  LOOP A OVER { 1 2 3 4 }
+    FORWARD $A
+    RIGHT 45
+  END
+END

@@ -1,0 +1,9 @@
+START
+  SET A ( 3 )
+  SET D ( $A 2 - )
+  LOOP B OVER { "BLUE" "BLACK" "RED" }
+    COLOUR $B
+    FORWARD $D
+    RIGHT 90
+  END
+END

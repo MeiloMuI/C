@@ -1,0 +1,11 @@
+I want to make ttl instructions more intuitive. So I used SDL to make an interface where user can input ttl instructions and the corresponding image is instantly generated on the right side of the interface. It can output a .ttl file after users quit the program with closing the window. I think it will be easier for young children to learn and write the ttl language.
+
+The user can input command with "Enter" button and delete the previous instruction with "~" button. And the instructions that have been entered will be displayed in the top-left corner. (I used an array to save the user's command. If the backspace is pressed, the character at the end of the string will be set to '\0' and the renderer will be updated. And I used a 2D array to save all the input so that I could use it to display the instructions on the top-left corner. When "Enter" is detected, the char array above will be copied to this 2D array. And when "~" is detected, previous string will be removed from array. The next input instruction will replace it.)
+
+The information used to help users to write instructions will be displayed on the right side of the interface together with the image. If user's instruction is wrong, an error message will be displayed rather than an image. (I split the 2D array with " " and save the tokens to the Program*’s array. And I adjusted the previous interpreter in order to render the error message and image at the appropriate time.)
+
+Bugs:
+
+1. Some characters are incorrect such as '{' and '}' because of the fontdata.
+
+2. Memory leak. The quantity is the same as Neill’s program in exercise 5.3 after I added SDL_DestroyTexture(), SDL_DestroyRenderer and SDL_DestroyWindow to Neill’s program. I think my program is not the reason for the memory leak. I called free() to free all the malloc memory and destroyed all the things in SDL. Could you please help me to find the reason?
